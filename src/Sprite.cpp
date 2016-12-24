@@ -3,8 +3,8 @@
 Sprite::~Sprite(){
     SDL_DestroyTexture(texture);
     SDL_FreeSurface(surface);
-    surface = NULL;
-    texture = NULL;
+    surface = nullptr;
+    texture = nullptr;
 }
 
 Sprite::Sprite(std::string bmpPath, SDL_Renderer* mainRenderer){
@@ -71,15 +71,15 @@ Sprite::Sprite(std::string bmpPath, SDL_Renderer* mainRenderer, int drawX, int d
 void Sprite::loadTexture( std::string path, SDL_Renderer* renderer)
 {
     //The final texture
-    SDL_Texture* newTexture = NULL;
+    SDL_Texture* newTexture = nullptr;
 
     //Load image at specified path
     SDL_Surface* loadedSurface = IMG_Load( path.c_str() );
-    surface = loadedSurface;
+    
     if(key > 0){
-        SDL_SetColorKey(loadedSurface, SDL_TRUE, SDL_MapRGB(loadedSurface->format, 0xFF,0,0xFF));
+        SDL_SetColorKey(loadedSurface, SDL_TRUE, key);
     }
-    if( loadedSurface == NULL )
+    if( loadedSurface == nullptr )
     {
         SDL_Log( "Unable to load image %s! SDL_image Error: %s\n", path.c_str(), IMG_GetError() );
     }
@@ -87,15 +87,14 @@ void Sprite::loadTexture( std::string path, SDL_Renderer* renderer)
     {
         //Create texture from surface pixels
         newTexture = SDL_CreateTextureFromSurface( renderer, loadedSurface );
-        if( newTexture == NULL )
+        if( newTexture == nullptr )
         {
             SDL_Log( "Unable to create texture from %s! SDL Error: %s\n", path.c_str(), SDL_GetError() );
         }
 
         //Get rid of old loaded surface
-        SDL_FreeSurface( loadedSurface );
     }
-
+    surface = loadedSurface;
     texture = newTexture;
 }
 

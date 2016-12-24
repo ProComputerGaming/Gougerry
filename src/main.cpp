@@ -1,123 +1,152 @@
+#define SDL_MAIN_HANDLED //Needed for windows compilation with mingw32
+
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_main.h>
 #include <SDL2/SDL_image.h>
 #include <SDL2/SDL_mixer.h>
+#include <SDL2/SDL_thread.h>
+#include <algorithm>
 #include <stdio.h>
 #include <string>
+#include <vector>
 #include "Sprite.hpp"
 #include "Player.hpp"
 
-const int SCREEN_WIDTH = 640;
-const int SCREEN_HEIGHT = 480;
+const int SDL_Flags = SDL_INIT_VIDEO | SDL_INIT_AUDIO;
+const int imgFlags = IMG_INIT_JPG|IMG_INIT_PNG;
+const int Mix_Flags = MIX_DEFAULT_FORMAT;
+
+const std::string TITLE = "Gougerry";
+const int SCREEN_WIDTH = 1280;
+const int SCREEN_HEIGHT = 720;
 const float HEIGHT_OFFSET_MULTIPLIER = .001;
 const int HEIGHT_OFFSET = SCREEN_HEIGHT * HEIGHT_OFFSET_MULTIPLIER;
 const int HEIGHT_LIMIT = SCREEN_HEIGHT / 2;
+
 const float TPS = 120.0;
 const float FPS = 60.0;
 const float MILLIS_PER_TICK = (1000.0 / TPS);
 const float MILLIS_PER_FRAME = (1000.0 / FPS);
-const std::string TITLE = "Gougerry";
 
-Player *gougerry = NULL;
-Sprite *background = NULL;
+const int BULLET_SPEED = 4;
+const int BULLET_LIMIT = 5;
+const int BULLET_DELAY = 125;
 
-SDL_Window *gWindow = NULL;
+const int X_SPEED = 3;
+const int Y_SPEED = 3;
 
-SDL_Renderer *gRenderer = NULL;
+std::vector<SDL_Rect> bullets;
 
-Mix_Music *gMusic = NULL;
+Player *gougerry = nullptr;
+Sprite *background = nullptr;
+Sprite *bulletSprite = nullptr;
+Sprite *splash = nullptr;
+
+SDL_Window *gWindow = nullptr;
+
+SDL_Renderer *gRenderer = nullptr;
+
+SDL_Event e;
+
+Mix_Chunk *intro = nullptr;
+Mix_Music *gMusic = nullptr;
 
 bool quit = false;
 bool canUpdate = true;
+
+unsigned long lastIntroTime;
+unsigned long targetIntroWaitTime;
+
+unsigned long lastBulletTime;
 unsigned long tickStartTime;
+unsigned long tickEndTime;
 unsigned long frameStartTime;
 unsigned long frameEndTime;
-long frameTime;
+unsigned long frameTime;
 
-const Uint8* currentKeyStates;
+enum GameState{
+	INTRO,
+	MAIN_MENU,
+	LEVEL_ONE
+} gameState = INTRO;
 
-//Starts up SDL and creates window
+enum IntroState{
+	ONE,
+	TWO,
+	THREE,
+	FOUR
+} introState = ONE;
+
 bool init();
 
-void update();
+void displaySplashAnimation();
 
-//Frees media and shuts down SDL
+void createBullet();
+
+int update(void* ptr);
+
+void render();
+
 void close();
 
-int main( int argc, char* args[] )
+int main( int argc, char* argv[] )
 {
-
-	//Start up SDL and create window
 	if( !init() )
 	{
 		printf( "Failed to initialize!\n" );
 	}
 	else
 	{
-		//Event handler
-		SDL_Event e;
 
-		Uint32 colorKey = SDL_MapRGB(SDL_GetWindowSurface(gWindow)->format, 0xFF, 0, 0xFF);
-		gougerry = new Player("../res/Ghougerry.png", gRenderer, 0, SCREEN_HEIGHT - HEIGHT_OFFSET, colorKey);
-		background = new Sprite("../res/background.png", gRenderer);
+		Uint32 colorKeyPurple = SDL_MapRGB(SDL_GetWindowSurface(gWindow)->format, 0xFF, 0, 0xFF);
+		Uint32 colorKeyWhite = SDL_MapRGB(SDL_GetWindowSurface(gWindow)->format, 0xFF, 0xFF, 0xFF);
+
+		splash = new Sprite("/home/michael/Projects/Ghougerry/res/Intro.png", gRenderer, colorKeyPurple);
+
+		gougerry = new Player("/home/michael/Projects/Ghougerry/res/Ghougerry.png", gRenderer, 0, SCREEN_HEIGHT - HEIGHT_OFFSET, colorKeyPurple);
+		gougerry->setX(SCREEN_WIDTH/2 - gougerry->getWidth() / 2);
+
+		bulletSprite = new Sprite("/home/michael/Projects/Ghougerry/res/Bullet.png", gRenderer, colorKeyWhite);
+		
+		background = new Sprite("/home/michael/Projects/Ghougerry/res/background.png", gRenderer);
 		background->setHeight(SCREEN_HEIGHT);
 		background->setWidth(SCREEN_WIDTH);
 
-		Mix_VolumeMusic(MIX_MAX_VOLUME);
-    	gMusic = Mix_LoadMUS( "../res/weird.wav" );
-   		if( gMusic == NULL )
+    	gMusic = Mix_LoadMUS( "/home/michael/Projects/Ghougerry/res/weird.wav" );
+   		if( gMusic == nullptr)
     	{
         	printf( "Failed to load beat music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
     	}
-    	Mix_PlayMusic(gMusic, -1);
-    	tickStartTime = SDL_GetTicks();
+
+    	intro = Mix_LoadWAV("/home/michael/Projects/Ghougerry/res/gougerry.wav");
+    	if(intro == nullptr){
+    		printf( "Failed to load intro music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
+    	}
+
+    	SDL_Thread* threadID = SDL_CreateThread(update, "UpdateThread", (void*)nullptr);
+    	
+    	lastIntroTime = SDL_GetTicks();
+
+    	Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 2);
+    	Mix_PlayChannel(-1, intro, 0);
 		while( !quit )
 		{
+
 			frameStartTime = SDL_GetTicks();
-
-			//Handle events on queue
-			while( SDL_PollEvent( &e ) != 0 )
-			{
-				switch(e.type){
-					case SDL_QUIT:
-						quit = true;
-						break;
-
-					default:
-						break;
-				}
-				
-			}
-
-			currentKeyStates = SDL_GetKeyboardState(NULL);
 			
-
-			if(SDL_GetTicks() - tickStartTime > MILLIS_PER_TICK){
-				update();
-				tickStartTime = SDL_GetTicks();
-			}
-			
-
-			//Clear screen
-			SDL_RenderClear( gRenderer );
-
-			//Render texture to screen
-			SDL_RenderCopy( gRenderer, background->getTexture(), NULL, background->getRect());
-			SDL_RenderCopy(	gRenderer, gougerry->getTexture(), NULL, gougerry->getRect());
-
-			//Update screen
-			SDL_RenderPresent( gRenderer );
+			render();
 
 			frameEndTime = SDL_GetTicks();
 			frameTime = frameEndTime - frameStartTime;
 			if(frameTime < MILLIS_PER_FRAME){
 				if(frameTime > 0){
 					SDL_Delay(MILLIS_PER_FRAME - frameTime);
-					//printf("Actual FPS: %lf\n", 1000.0/(endTime - startTime));
 				}
 			}
 		}
+		SDL_WaitThread(threadID, nullptr);
 	}
-	//Free resources and close SDL
+
 	close();
 
 	return 0;
@@ -125,127 +154,309 @@ int main( int argc, char* args[] )
 
 bool init()
 {
-	//Initialization flag
 	bool success = true;
 
-	//Initialize SDL
-	if( SDL_Init( SDL_INIT_VIDEO | SDL_INIT_AUDIO ) < 0 )
+
+	if( SDL_Init( SDL_Flags ) < 0 )
 	{
 		printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
 		success = false;
-	}
-	else
+	}else 
 	{
-		//Set texture filtering to linear
 		if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
 		{
 			printf( "Warning: Linear texture filtering not enabled!" );
 		}
 
-		//Create window
 		gWindow = SDL_CreateWindow( TITLE.c_str(), SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_SHOWN );
-		if( gWindow == NULL )
+		if( gWindow == nullptr )
 		{
 			printf( "Window could not be created! SDL Error: %s\n", SDL_GetError() );
 			success = false;
 		}
 		else
 		{
-			//Create renderer for window
 			gRenderer = SDL_CreateRenderer( gWindow, -1, SDL_RENDERER_ACCELERATED );
-			if( gRenderer == NULL )
+			if( gRenderer == nullptr )
 			{
 				printf( "Renderer could not be created! SDL Error: %s\n", SDL_GetError() );
 				success = false;
 			}
 			else
 			{
-				//Initialize renderer color
-				SDL_SetRenderDrawColor( gRenderer, 0xFF, 0xFF, 0xFF, 0xFF );
+				SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
 
-				//Initialize PNG loading
-				int imgFlags = IMG_INIT_JPG|IMG_INIT_PNG;
+				
 				if( !( IMG_Init( imgFlags ) & imgFlags ) )
 				{
 					printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
 					success = false;
 				}
-				 //Initialize SDL_mixer
-                if( Mix_OpenAudio( 44100, MIX_DEFAULT_FORMAT, 2, 4096 ) < 0 )
-                {
-                    printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
-                    success = false;
-                }
+				//Initialize SDL_mixer
+	            if( Mix_OpenAudio( 44100, Mix_Flags, 2, 4096 ) < 0 )
+	            {
+	               printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+	               success = false;
+	            }
+	            Mix_AllocateChannels(MIX_CHANNELS);
 			}
 		}
 	}
-
 	return success;
 }
 
-void update(){
+void displaySplashAnimation(){
+    	
+}
 
-	if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
-		quit = true;
-		return;
+void createBullet(){
+	SDL_Rect bullet;
+	bullet.x = gougerry->getX() + (gougerry->getWidth() / 2) - (bulletSprite->getWidth() / 2);
+	bullet.y = gougerry->getY() - gougerry->getHeight() / 2;
+	bullet.w = bulletSprite->getWidth();
+	bullet.h = bulletSprite->getHeight();
+	bullets.push_back(bullet);
+}
+
+int update(void* ptr){
+	const Uint8* currentKeyStates;
+	while(!quit){
+		switch(gameState){
+
+			case INTRO:
+
+				while( SDL_PollEvent( &e ) != 0 )
+				{
+					switch(e.type){
+						case SDL_QUIT:
+							quit = true;
+							break;
+
+						default:
+							break;
+					}
+						
+				}
+
+				currentKeyStates = SDL_GetKeyboardState(NULL);
+
+				if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
+					quit = true;
+					return 0;
+				}
+
+				switch(introState){
+					case ONE:
+						if(SDL_GetTicks() - lastIntroTime > 3500){
+							introState = TWO;
+							Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
+    						Mix_PlayMusic(gMusic, -1);
+    						lastIntroTime = SDL_GetTicks();
+						}
+						break;
+					case TWO:
+						if(SDL_GetTicks() - lastIntroTime > 4500){
+							introState = THREE;
+							lastIntroTime = SDL_GetTicks();
+						}
+						break;
+
+					case THREE:
+						if(SDL_GetTicks() - lastIntroTime > 1000){
+							introState = FOUR;
+							lastIntroTime = SDL_GetTicks();
+						}
+						break;
+
+					case FOUR:
+						if(SDL_GetTicks() - lastIntroTime > 1000){
+							gameState = LEVEL_ONE;
+							lastIntroTime = SDL_GetTicks();
+						}
+						break;
+				}
+
+				break;
+
+			case MAIN_MENU:
+
+				break;
+
+			case LEVEL_ONE:
+				
+				tickStartTime = SDL_GetTicks();
+
+				while( SDL_PollEvent( &e ) != 0 )
+				{
+					switch(e.type){
+						case SDL_QUIT:
+							quit = true;
+							break;
+
+						default:
+							break;
+					}
+						
+				}
+
+
+				currentKeyStates = SDL_GetKeyboardState(NULL);
+
+				if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
+					quit = true;
+					return 0;
+				}
+
+				if(currentKeyStates[SDL_SCANCODE_SPACE]){
+					if(bullets.size() < BULLET_LIMIT && SDL_GetTicks() - lastBulletTime > BULLET_DELAY){
+						lastBulletTime = SDL_GetTicks();
+						createBullet();
+					}
+				}
+
+				if( currentKeyStates[ SDL_SCANCODE_UP ] || currentKeyStates[SDL_SCANCODE_W])
+			    {
+			    	gougerry->setYSpeed(-Y_SPEED);
+			    }
+			    else if(currentKeyStates[SDL_SCANCODE_DOWN] || currentKeyStates[SDL_SCANCODE_S]){
+			    	gougerry->setYSpeed(Y_SPEED);
+			    }
+			    else{
+			    	gougerry->setYSpeed(0);
+			    } 
+
+			    if((currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]) && (currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D])){
+			    	gougerry->setXSpeed(0);	
+			    }
+			    else if( currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]){
+			        gougerry->setXSpeed(-X_SPEED);
+			    }
+			    else if( currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D]){
+			        gougerry->setXSpeed(X_SPEED);
+			    }
+			    else{
+			    	gougerry->setXSpeed(0);
+			    }
+
+				gougerry->setX(gougerry->getX() + gougerry->getXSpeed());
+				gougerry->setY(gougerry->getY() + gougerry->getYSpeed());
+				
+				if(gougerry->getX() < 0){
+					gougerry->setX(0);
+				}else if(gougerry->getX() + gougerry->getWidth() > SCREEN_WIDTH){
+					gougerry->setX(SCREEN_WIDTH - gougerry->getWidth());
+				}
+
+				if(gougerry->getY() < HEIGHT_LIMIT){
+					gougerry->setY(HEIGHT_LIMIT);
+				}
+
+				if(gougerry->getY() > (SCREEN_HEIGHT - gougerry->getHeight() - HEIGHT_OFFSET)){
+					gougerry->setY(SCREEN_HEIGHT - gougerry->getHeight() - HEIGHT_OFFSET);
+				}
+
+				for(int i = 0; i < bullets.size(); i++){
+					bullets[i].y -= BULLET_SPEED;
+				}
+
+				bullets.erase(std::remove_if( bullets.begin(), bullets.end(), [](const auto& thing) { 
+						return thing.y < 0; 
+					}),
+					
+					bullets.end()
+				);
+
+				unsigned long tickTime = SDL_GetTicks() - tickStartTime;
+
+				if(tickTime < MILLIS_PER_TICK){
+					SDL_Delay(MILLIS_PER_TICK - tickTime);
+				}
+				break;
+		}
 	}
+	delete currentKeyStates;
+	return 0;
+}
 
-	if( currentKeyStates[ SDL_SCANCODE_UP ] )
-    {
-    	gougerry->setYSpeed(-5);
-    }
-    else if(currentKeyStates[SDL_SCANCODE_DOWN]){
-    	gougerry->setYSpeed(5);
-    }
-    else{
-    	gougerry->setYSpeed(0);
-    } 
+void render(){
 
-    if(currentKeyStates[ SDL_SCANCODE_LEFT ] && currentKeyStates[ SDL_SCANCODE_RIGHT ]){
-    	gougerry->setXSpeed(0);	
-    }
-    else if( currentKeyStates[ SDL_SCANCODE_LEFT ] ){
-        gougerry->setXSpeed(-5);
-    }
-    else if( currentKeyStates[ SDL_SCANCODE_RIGHT ] ){
-        gougerry->setXSpeed(5);
-    }
-    else{
-    	gougerry->setXSpeed(0);
-    }
+		switch(gameState){
+			case INTRO:
+				SDL_Rect firstSplash;
+				firstSplash.x = 0;
+				firstSplash.y = 0;
+				firstSplash.w = splash->getWidth();
+				firstSplash.h = splash->getHeight() / 2;
 
-	gougerry->setX(gougerry->getX() + gougerry->getXSpeed());
-	gougerry->setY(gougerry->getY() + gougerry->getYSpeed());
-	
-	if(gougerry->getX() < 0){
-		gougerry->setX(0);
-	}else if(gougerry->getX() + gougerry->getWidth() > SCREEN_WIDTH){
-		gougerry->setX(SCREEN_WIDTH - gougerry->getWidth());
-	}
+				SDL_Rect screenOne;
+				screenOne.x = 0;
+				screenOne.y = 0;
+				screenOne.w = SCREEN_WIDTH;
+				screenOne.h = SCREEN_HEIGHT/2;
 
-	if(gougerry->getY() < HEIGHT_LIMIT){
-		gougerry->setY(HEIGHT_LIMIT);
-	}
+					switch(introState){
+						case ONE:
+				    		SDL_RenderClear(gRenderer);
+    						SDL_RenderCopy(gRenderer, gougerry->getTexture(), nullptr, nullptr);
+    						SDL_RenderPresent(gRenderer);
+    						break;
 
-	if(gougerry->getY() > (SCREEN_HEIGHT - gougerry->getHeight() - HEIGHT_OFFSET)){
-		gougerry->setY(SCREEN_HEIGHT - gougerry->getHeight() - HEIGHT_OFFSET);
-	}
+    					case TWO:
+    						SDL_RenderClear(gRenderer);
+    						SDL_RenderCopy(gRenderer, splash->getTexture(), &firstSplash, &screenOne);
+    						SDL_RenderPresent(gRenderer);
+    						break;
+
+    					case THREE:
+    						SDL_RenderClear(gRenderer);
+    						SDL_RenderCopy(gRenderer, splash->getTexture(), nullptr, nullptr);
+    						SDL_RenderPresent(gRenderer);
+    						break;
+
+    					case FOUR:
+    						SDL_RenderClear(gRenderer);
+    						SDL_RenderCopy(gRenderer, splash->getTexture(), nullptr, nullptr);
+    						SDL_RenderPresent(gRenderer);
+    						break;
+					}
+				break;
+
+			case MAIN_MENU:
+
+				break;
+
+			case LEVEL_ONE:
+				SDL_RenderCopy( gRenderer, background->getTexture(), nullptr, background->getRect());
+
+				for(int i = 0; i < bullets.size(); i++){
+					SDL_RenderCopy(gRenderer, bulletSprite->getTexture(), nullptr, &bullets[i]);
+				}
+
+				SDL_RenderCopy(	gRenderer, gougerry->getTexture(), nullptr, gougerry->getRect());
+
+				SDL_RenderPresent( gRenderer );
+
+				break;
+		}
 }
 
 void close()
 {
-	delete currentKeyStates;
+	delete splash;
 	delete gougerry;
+	delete bulletSprite;
 	delete background;
 
 	//Destroy window	
 	SDL_DestroyRenderer( gRenderer );
 	SDL_DestroyWindow( gWindow );
-	gWindow = NULL;
-	gRenderer = NULL;
+	gWindow = nullptr;
+	gRenderer = nullptr;
 
+	Mix_FreeChunk(intro);
 	Mix_FreeMusic(gMusic);
-	gMusic = NULL;
+	intro = nullptr;
+	gMusic = nullptr;
 
 	//Quit SDL subsystems
 	Mix_Quit();
