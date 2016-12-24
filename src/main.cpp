@@ -127,7 +127,7 @@ int main( int argc, char* argv[] )
     	
     	lastIntroTime = SDL_GetTicks();
 
-    	Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 2);
+    	Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 5);
     	Mix_PlayChannel(-1, intro, 0);
 		while( !quit )
 		{
@@ -224,6 +224,8 @@ int update(void* ptr){
 		switch(gameState){
 
 			case INTRO:
+			{
+				tickStartTime = SDL_GetTicks();
 
 				while( SDL_PollEvent( &e ) != 0 )
 				{
@@ -249,7 +251,7 @@ int update(void* ptr){
 					case ONE:
 						if(SDL_GetTicks() - lastIntroTime > 3500){
 							introState = TWO;
-							Mix_VolumeMusic(MIX_MAX_VOLUME / 2);
+							Mix_VolumeMusic(MIX_MAX_VOLUME / 5);
     						Mix_PlayMusic(gMusic, -1);
     						lastIntroTime = SDL_GetTicks();
 						}
@@ -269,21 +271,37 @@ int update(void* ptr){
 						break;
 
 					case FOUR:
-						if(SDL_GetTicks() - lastIntroTime > 1000){
+						if(SDL_GetTicks() - lastIntroTime > 3000){
 							gameState = LEVEL_ONE;
 							lastIntroTime = SDL_GetTicks();
 						}
 						break;
+					default:
+						break;
 				}
 
+				unsigned long tickTime = SDL_GetTicks() - tickStartTime;
+
+				if(tickTime < MILLIS_PER_TICK){
+					SDL_Delay(MILLIS_PER_TICK - tickTime);
+				}
 				break;
+			}
 
 			case MAIN_MENU:
+			{
+				tickStartTime = SDL_GetTicks();
 
+				unsigned long tickTime = SDL_GetTicks() - tickStartTime;
+
+				if(tickTime < MILLIS_PER_TICK){
+					SDL_Delay(MILLIS_PER_TICK - tickTime);
+				}
 				break;
+			}
 
 			case LEVEL_ONE:
-				
+			{
 				tickStartTime = SDL_GetTicks();
 
 				while( SDL_PollEvent( &e ) != 0 )
@@ -372,6 +390,9 @@ int update(void* ptr){
 					SDL_Delay(MILLIS_PER_TICK - tickTime);
 				}
 				break;
+			}
+			default:
+				break;
 		}
 	}
 	delete currentKeyStates;
@@ -382,6 +403,7 @@ void render(){
 
 		switch(gameState){
 			case INTRO:
+			{
 				SDL_Rect firstSplash;
 				firstSplash.x = 0;
 				firstSplash.y = 0;
@@ -403,13 +425,13 @@ void render(){
 
     					case TWO:
     						SDL_RenderClear(gRenderer);
-    						SDL_RenderCopy(gRenderer, splash->getTexture(), &firstSplash, &screenOne);
+    						SDL_RenderCopy(gRenderer, gougerry->getTexture(), nullptr, nullptr);
     						SDL_RenderPresent(gRenderer);
     						break;
 
     					case THREE:
     						SDL_RenderClear(gRenderer);
-    						SDL_RenderCopy(gRenderer, splash->getTexture(), nullptr, nullptr);
+    						SDL_RenderCopy(gRenderer, splash->getTexture(), &firstSplash, &screenOne);
     						SDL_RenderPresent(gRenderer);
     						break;
 
@@ -420,12 +442,16 @@ void render(){
     						break;
 					}
 				break;
+			}
 
 			case MAIN_MENU:
+			{
 
 				break;
+			}
 
 			case LEVEL_ONE:
+			{
 				SDL_RenderCopy( gRenderer, background->getTexture(), nullptr, background->getRect());
 
 				for(int i = 0; i < bullets.size(); i++){
@@ -436,6 +462,10 @@ void render(){
 
 				SDL_RenderPresent( gRenderer );
 
+				break;
+			}
+
+			default:
 				break;
 		}
 }
