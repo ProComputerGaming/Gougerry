@@ -79,8 +79,6 @@ enum IntroState{
 
 bool init();
 
-void displaySplashAnimation();
-
 void createBullet();
 
 int update(void* ptr);
@@ -203,10 +201,6 @@ bool init()
 		}
 	}
 	return success;
-}
-
-void displaySplashAnimation(){
-    	
 }
 
 void createBullet(){
