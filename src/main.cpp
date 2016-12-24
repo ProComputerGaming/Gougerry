@@ -101,24 +101,24 @@ int main( int argc, char* argv[] )
 		Uint32 colorKeyPurple = SDL_MapRGB(SDL_GetWindowSurface(gWindow)->format, 0xFF, 0, 0xFF);
 		Uint32 colorKeyWhite = SDL_MapRGB(SDL_GetWindowSurface(gWindow)->format, 0xFF, 0xFF, 0xFF);
 
-		splash = new Sprite("/home/michael/Projects/Ghougerry/res/Intro.png", gRenderer, colorKeyPurple);
+		splash = new Sprite("res/Intro.png", gRenderer, colorKeyPurple);
 
-		gougerry = new Player("/home/michael/Projects/Ghougerry/res/Ghougerry.png", gRenderer, 0, SCREEN_HEIGHT - HEIGHT_OFFSET, colorKeyPurple);
+		gougerry = new Player("res/Ghougerry.png", gRenderer, 0, SCREEN_HEIGHT - HEIGHT_OFFSET, colorKeyPurple);
 		gougerry->setX(SCREEN_WIDTH/2 - gougerry->getWidth() / 2);
 
-		bulletSprite = new Sprite("/home/michael/Projects/Ghougerry/res/Bullet.png", gRenderer, colorKeyWhite);
+		bulletSprite = new Sprite("res/Bullet.png", gRenderer, colorKeyWhite);
 		
-		background = new Sprite("/home/michael/Projects/Ghougerry/res/background.png", gRenderer);
+		background = new Sprite("res/background.png", gRenderer);
 		background->setHeight(SCREEN_HEIGHT);
 		background->setWidth(SCREEN_WIDTH);
 
-    	gMusic = Mix_LoadMUS( "/home/michael/Projects/Ghougerry/res/weird.wav" );
+    	gMusic = Mix_LoadMUS( "res/weird.wav" );
    		if( gMusic == nullptr)
     	{
         	printf( "Failed to load beat music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
     	}
 
-    	intro = Mix_LoadWAV("/home/michael/Projects/Ghougerry/res/gougerry.wav");
+    	intro = Mix_LoadWAV("res/gougerry.wav");
     	if(intro == nullptr){
     		printf( "Failed to load intro music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
     	}

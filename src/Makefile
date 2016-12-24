@@ -17,8 +17,8 @@ LINUX_LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_mixer
 WINDOWS_LINKER_FLAGS = -mwindows -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32 -lSDL2.dll -lSDL2_mixer.dll -lSDL2_image.dll
 
 #OBJ_NAME specifies the name of our exectuable
-LINUX_NAME = ../bin/linux/Gougerry
-WINDOWS_NAME = ../bin/windows_x64/Gougerry.exe
+LINUX_NAME = ../Gougerry_linux
+WINDOWS_NAME = ../Gougerry_windows.exe
 
 #This is the target that compiles our executable
 linux : $(OBJS)
