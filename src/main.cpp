@@ -286,6 +286,27 @@ int update(void* ptr){
 			{
 				tickStartTime = SDL_GetTicks();
 
+				while( SDL_PollEvent( &e ) != 0 )
+				{
+					switch(e.type){
+						case SDL_QUIT:
+							quit = true;
+							break;
+
+						default:
+							break;
+					}
+						
+				}
+
+
+				currentKeyStates = SDL_GetKeyboardState(NULL);
+
+				if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
+					quit = true;
+					return 0;
+				}
+
 				unsigned long tickTime = SDL_GetTicks() - tickStartTime;
 
 				if(tickTime < MILLIS_PER_TICK){
