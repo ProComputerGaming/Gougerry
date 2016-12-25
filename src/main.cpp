@@ -110,27 +110,41 @@ int main( int argc, char* argv[] )
 		background->setHeight(SCREEN_HEIGHT);
 		background->setWidth(SCREEN_WIDTH);
 
-    	gMusic = Mix_LoadMUS( "res/weird.wav" );
-   		if( gMusic == nullptr)
-    	{
-        	printf( "Failed to load beat music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
-    	}
+		gMusic = Mix_LoadMUS( "res/weird.wav" );
+		if( gMusic == nullptr)
+		{
+			printf( "Failed to load beat music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
+		}
 
-    	intro = Mix_LoadWAV("res/gougerry.wav");
-    	if(intro == nullptr){
-    		printf( "Failed to load intro music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
-    	}
+		intro = Mix_LoadWAV("res/gougerry.wav");
+		if(intro == nullptr){
+			printf( "Failed to load intro music! Remember to check file format and bitrate! SDL_mixer Error: %s\n", Mix_GetError() );
+		}
 
-    	SDL_Thread* threadID = SDL_CreateThread(update, "UpdateThread", (void*)nullptr);
-    	
-    	lastIntroTime = SDL_GetTicks();
+		SDL_Thread* threadID = SDL_CreateThread(update, "UpdateThread", (void*)nullptr);
 
-    	Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 5);
-    	Mix_PlayChannel(-1, intro, 0);
+		lastIntroTime = SDL_GetTicks();
+
+		Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 5);
+		Mix_PlayChannel(-1, intro, 0);
 		while( !quit )
 		{
 
 			frameStartTime = SDL_GetTicks();
+
+
+			while( SDL_PollEvent( &e ) != 0 )
+			{
+				switch(e.type){
+					case SDL_QUIT:
+					quit = true;
+					break;
+
+					default:
+					break;
+				}
+			}
+
 			
 			render();
 
@@ -191,12 +205,12 @@ bool init()
 					success = false;
 				}
 				//Initialize SDL_mixer
-	            if( Mix_OpenAudio( 44100, Mix_Flags, 2, 4096 ) < 0 )
-	            {
-	               printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
-	               success = false;
-	            }
-	            Mix_AllocateChannels(MIX_CHANNELS);
+				if( Mix_OpenAudio( 44100, Mix_Flags, 2, 4096 ) < 0 )
+				{
+					printf( "SDL_mixer could not initialize! SDL_mixer Error: %s\n", Mix_GetError() );
+					success = false;
+				}
+				Mix_AllocateChannels(MIX_CHANNELS);
 			}
 		}
 	}
@@ -221,19 +235,6 @@ int update(void* ptr){
 			{
 				tickStartTime = SDL_GetTicks();
 
-				while( SDL_PollEvent( &e ) != 0 )
-				{
-					switch(e.type){
-						case SDL_QUIT:
-							quit = true;
-							break;
-
-						default:
-							break;
-					}
-						
-				}
-
 				currentKeyStates = SDL_GetKeyboardState(NULL);
 
 				if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
@@ -243,35 +244,37 @@ int update(void* ptr){
 
 				switch(introState){
 					case ONE:
-						if(SDL_GetTicks() - lastIntroTime > 3500){
-							introState = TWO;
-							Mix_VolumeMusic(MIX_MAX_VOLUME / 5);
-    						Mix_PlayMusic(gMusic, -1);
-    						lastIntroTime = SDL_GetTicks();
-						}
-						break;
+					if(SDL_GetTicks() - lastIntroTime > 3500){
+						introState = TWO;
+						Mix_VolumeMusic(MIX_MAX_VOLUME / 5);
+						Mix_PlayMusic(gMusic, -1);
+						lastIntroTime = SDL_GetTicks();
+					}
+					break;
+
 					case TWO:
-						if(SDL_GetTicks() - lastIntroTime > 4500){
-							introState = THREE;
-							lastIntroTime = SDL_GetTicks();
-						}
-						break;
+					if(SDL_GetTicks() - lastIntroTime > 4500){
+						introState = THREE;
+						lastIntroTime = SDL_GetTicks();
+					}
+					break;
 
 					case THREE:
-						if(SDL_GetTicks() - lastIntroTime > 1000){
-							introState = FOUR;
-							lastIntroTime = SDL_GetTicks();
-						}
-						break;
+					if(SDL_GetTicks() - lastIntroTime > 1000){
+						introState = FOUR;
+						lastIntroTime = SDL_GetTicks();
+					}
+					break;
 
 					case FOUR:
-						if(SDL_GetTicks() - lastIntroTime > 3000){
-							gameState = LEVEL_ONE;
-							lastIntroTime = SDL_GetTicks();
-						}
-						break;
+					if(SDL_GetTicks() - lastIntroTime > 3000){
+						gameState = LEVEL_ONE;
+						lastIntroTime = SDL_GetTicks();
+					}
+					break;
+
 					default:
-						break;
+					break;
 				}
 
 				unsigned long tickTime = SDL_GetTicks() - tickStartTime;
@@ -285,20 +288,6 @@ int update(void* ptr){
 			case MAIN_MENU:
 			{
 				tickStartTime = SDL_GetTicks();
-
-				while( SDL_PollEvent( &e ) != 0 )
-				{
-					switch(e.type){
-						case SDL_QUIT:
-							quit = true;
-							break;
-
-						default:
-							break;
-					}
-						
-				}
-
 
 				currentKeyStates = SDL_GetKeyboardState(NULL);
 
@@ -319,19 +308,6 @@ int update(void* ptr){
 			{
 				tickStartTime = SDL_GetTicks();
 
-				while( SDL_PollEvent( &e ) != 0 )
-				{
-					switch(e.type){
-						case SDL_QUIT:
-							quit = true;
-							break;
-
-						default:
-							break;
-					}
-						
-				}
-
 
 				currentKeyStates = SDL_GetKeyboardState(NULL);
 
@@ -348,28 +324,28 @@ int update(void* ptr){
 				}
 
 				if( currentKeyStates[ SDL_SCANCODE_UP ] || currentKeyStates[SDL_SCANCODE_W])
-			    {
-			    	gougerry->setYSpeed(-Y_SPEED);
-			    }
-			    else if(currentKeyStates[SDL_SCANCODE_DOWN] || currentKeyStates[SDL_SCANCODE_S]){
-			    	gougerry->setYSpeed(Y_SPEED);
-			    }
-			    else{
-			    	gougerry->setYSpeed(0);
-			    } 
+				{
+					gougerry->setYSpeed(-Y_SPEED);
+				}
+				else if(currentKeyStates[SDL_SCANCODE_DOWN] || currentKeyStates[SDL_SCANCODE_S]){
+					gougerry->setYSpeed(Y_SPEED);
+				}
+				else{
+					gougerry->setYSpeed(0);
+				} 
 
-			    if((currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]) && (currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D])){
-			    	gougerry->setXSpeed(0);	
-			    }
-			    else if( currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]){
-			        gougerry->setXSpeed(-X_SPEED);
-			    }
-			    else if( currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D]){
-			        gougerry->setXSpeed(X_SPEED);
-			    }
-			    else{
-			    	gougerry->setXSpeed(0);
-			    }
+				if((currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]) && (currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D])){
+					gougerry->setXSpeed(0);	
+				}
+				else if( currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]){
+					gougerry->setXSpeed(-X_SPEED);
+				}
+				else if( currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D]){
+					gougerry->setXSpeed(X_SPEED);
+				}
+				else{
+					gougerry->setXSpeed(0);
+				}
 
 				gougerry->setX(gougerry->getX() + gougerry->getXSpeed());
 				gougerry->setY(gougerry->getY() + gougerry->getYSpeed());
@@ -393,10 +369,10 @@ int update(void* ptr){
 				}
 
 				bullets.erase(std::remove_if( bullets.begin(), bullets.end(), [](const auto& thing) { 
-						return thing.y < 0; 
-					}),
-					
-					bullets.end()
+					return thing.y < 0; 
+				}),
+
+				bullets.end()
 				);
 
 				unsigned long tickTime = SDL_GetTicks() - tickStartTime;
@@ -407,7 +383,7 @@ int update(void* ptr){
 				break;
 			}
 			default:
-				break;
+			break;
 		}
 	}
 	delete currentKeyStates;
@@ -416,73 +392,73 @@ int update(void* ptr){
 
 void render(){
 
-		switch(gameState){
-			case INTRO:
-			{
-				SDL_Rect firstSplash;
-				firstSplash.x = 0;
-				firstSplash.y = 0;
-				firstSplash.w = splash->getWidth();
-				firstSplash.h = splash->getHeight() / 2;
+	switch(gameState){
+		case INTRO:
+		{
+			SDL_Rect firstSplash;
+			firstSplash.x = 0;
+			firstSplash.y = 0;
+			firstSplash.w = splash->getWidth();
+			firstSplash.h = splash->getHeight() / 2;
 
-				SDL_Rect screenOne;
-				screenOne.x = 0;
-				screenOne.y = 0;
-				screenOne.w = SCREEN_WIDTH;
-				screenOne.h = SCREEN_HEIGHT/2;
+			SDL_Rect screenOne;
+			screenOne.x = 0;
+			screenOne.y = 0;
+			screenOne.w = SCREEN_WIDTH;
+			screenOne.h = SCREEN_HEIGHT/2;
 
-					switch(introState){
-						case ONE:
-				    		SDL_RenderClear(gRenderer);
-    						SDL_RenderCopy(gRenderer, gougerry->getTexture(), nullptr, nullptr);
-    						SDL_RenderPresent(gRenderer);
-    						break;
+			switch(introState){
+				case ONE:
+				SDL_RenderClear(gRenderer);
+				SDL_RenderCopy(gRenderer, gougerry->getTexture(), nullptr, nullptr);
+				SDL_RenderPresent(gRenderer);
+				break;
 
-    					case TWO:
-    						SDL_RenderClear(gRenderer);
-    						SDL_RenderCopy(gRenderer, gougerry->getTexture(), nullptr, nullptr);
-    						SDL_RenderPresent(gRenderer);
-    						break;
+				case TWO:
+				SDL_RenderClear(gRenderer);
+				SDL_RenderCopy(gRenderer, gougerry->getTexture(), nullptr, nullptr);
+				SDL_RenderPresent(gRenderer);
+				break;
 
-    					case THREE:
-    						SDL_RenderClear(gRenderer);
-    						SDL_RenderCopy(gRenderer, splash->getTexture(), &firstSplash, &screenOne);
-    						SDL_RenderPresent(gRenderer);
-    						break;
+				case THREE:
+				SDL_RenderClear(gRenderer);
+				SDL_RenderCopy(gRenderer, splash->getTexture(), &firstSplash, &screenOne);
+				SDL_RenderPresent(gRenderer);
+				break;
 
-    					case FOUR:
-    						SDL_RenderClear(gRenderer);
-    						SDL_RenderCopy(gRenderer, splash->getTexture(), nullptr, nullptr);
-    						SDL_RenderPresent(gRenderer);
-    						break;
-					}
+				case FOUR:
+				SDL_RenderClear(gRenderer);
+				SDL_RenderCopy(gRenderer, splash->getTexture(), nullptr, nullptr);
+				SDL_RenderPresent(gRenderer);
 				break;
 			}
-
-			case MAIN_MENU:
-			{
-
-				break;
-			}
-
-			case LEVEL_ONE:
-			{
-				SDL_RenderCopy( gRenderer, background->getTexture(), nullptr, background->getRect());
-
-				for(int i = 0; i < bullets.size(); i++){
-					SDL_RenderCopy(gRenderer, bulletSprite->getTexture(), nullptr, &bullets[i]);
-				}
-
-				SDL_RenderCopy(	gRenderer, gougerry->getTexture(), nullptr, gougerry->getRect());
-
-				SDL_RenderPresent( gRenderer );
-
-				break;
-			}
-
-			default:
-				break;
+			break;
 		}
+
+		case MAIN_MENU:
+		{
+
+			break;
+		}
+
+		case LEVEL_ONE:
+		{
+			SDL_RenderCopy( gRenderer, background->getTexture(), nullptr, background->getRect());
+
+			for(int i = 0; i < bullets.size(); i++){
+				SDL_RenderCopy(gRenderer, bulletSprite->getTexture(), nullptr, &bullets[i]);
+			}
+
+			SDL_RenderCopy(	gRenderer, gougerry->getTexture(), nullptr, gougerry->getRect());
+
+			SDL_RenderPresent( gRenderer );
+
+			break;
+		}
+
+		default:
+		break;
+	}
 }
 
 void close()
