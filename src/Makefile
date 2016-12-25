@@ -1,20 +1,20 @@
 #OBJS specifies which files to compile as part of the project
 OBJS = main.cpp Sprite.cpp Player.cpp
 
+SDL_DIR = /usr/local/cross-tools/x86_64-w64-mingw32
 #CC specifies which compiler we're using
 CXX = g++
 
 WINDOWS_CXX = x86_64-w64-mingw32-g++
 
-SDL_ROOT_DIR = /usr/local/cross-tools/x86_64-w64-mingw32
 #COMPILER_FLAGS specifies the additional compilation options we're using
 # -w suppresses all warnings
 LINUX_COMPILER_FLAGS = -Wall -g 
-WINDOWS_COMPILER_FLAGS = -Wall 
+WINDOWS_COMPILER_FLAGS = -Wall `$(SDL_DIR)/bin/sdl2-config --cflags` -I$(SDL_DIR)/include 
 
 #LINKER_FLAGS specifies the libraries we're linking against
 LINUX_LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_mixer
-WINDOWS_LINKER_FLAGS = -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32 -lSDL2main -lSDL2.dll -lSDL2_mixer.dll -lSDL2_image.dll
+WINDOWS_LINKER_FLAGS = `$(SDL_DIR)/bin/sdl2-config --libs` -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32 -lSDL2main -lSDL2.dll -lSDL2_mixer.dll -lSDL2_image.dll
 
 #OBJ_NAME specifies the name of our exectuable
 LINUX_NAME = ../Gougerry_linux
