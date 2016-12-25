@@ -14,7 +14,7 @@ WINDOWS_COMPILER_FLAGS = -Wall `$(SDL_DIR)/bin/sdl2-config --cflags` -I$(SDL_DIR
 
 #LINKER_FLAGS specifies the libraries we're linking against
 LINUX_LINKER_FLAGS = -lSDL2 -lSDL2_image -lSDL2_mixer
-WINDOWS_LINKER_FLAGS = `$(SDL_DIR)/bin/sdl2-config --libs` -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32 -lSDL2main -lSDL2.dll -lSDL2_mixer.dll -lSDL2_image.dll
+WINDOWS_LINKER_FLAGS = `$(SDL_DIR)/bin/sdl2-config --libs` -static-libgcc -static-libstdc++ -Wl,-Bstatic -lstdc++ -lpthread -Wl,-Bdynamic -lmingw32 -L$(SDL_DIR)/lib -lSDL2main -lSDL2.dll -lSDL2_mixer.dll -lSDL2_image.dll
 
 #OBJ_NAME specifies the name of our exectuable
 LINUX_NAME = ../Gougerry_linux
