@@ -98,6 +98,11 @@ void Sprite::loadTexture( std::string path, SDL_Renderer* renderer)
     texture = newTexture;
 }
 
+void Sprite::loadTexture(SDL_Surface* newSurface, SDL_Texture* newTexture){
+    surface = newSurface;
+    texture = newTexture;
+}
+
 SDL_Texture* Sprite::getTexture(){
 	return texture;
 }

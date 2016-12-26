@@ -1,5 +1,6 @@
 #ifndef SPRITE_H
 #define SPRITE_H
+
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_image.h>
 #include <string>
@@ -20,6 +21,7 @@ public:
 	Sprite(std::string bmpPath, SDL_Renderer* mainRenderer, int drawX, int drawY);
 	Sprite(std::string bmpPath, SDL_Renderer* mainRenderer, int drawX, int drawY, Uint32 colorKey);
 	void loadTexture( std::string path, SDL_Renderer* renderer);
+	void loadTexture(SDL_Surface* newSurface, SDL_Texture* newTexture);
 	SDL_Surface* getSurface();
 	SDL_Texture* getTexture();
 
@@ -35,4 +37,5 @@ public:
 	int getX();
 	int getY();
 };
+
 #endif

@@ -21,8 +21,11 @@ LINUX_NAME = ../Gougerry_linux
 WINDOWS_NAME = ../Gougerry_windows.exe
 
 #This is the target that compiles our executable
+
+all: linux windows
+
 linux : $(OBJS)
 	$(CXX) $(LINUX_COMPILER_FLAGS) $(LINUX_LINKER_FLAGS) $(OBJS) -o $(LINUX_NAME)
 
 windows : $(OBJS)
-	$(WINDOWS_CXX) $(WINDOWS_COMPILER_FLAGS) $(OBJS) $(WINDOWS_LINKER_FLAGS)  -o $(WINDOWS_NAME)
+	$(WINDOWS_CXX) $(WINDOWS_COMPILER_FLAGS) $(OBJS) $(WINDOWS_LINKER_FLAGS) -o $(WINDOWS_NAME)

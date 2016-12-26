@@ -12,13 +12,13 @@
 #include "Sprite.hpp"
 #include "Player.hpp"
 
-const int SDL_Flags = SDL_INIT_VIDEO | SDL_INIT_AUDIO;
+const int SDL_Flags = SDL_INIT_EVERYTHING;
 const int imgFlags = IMG_INIT_JPG|IMG_INIT_PNG;
 const int Mix_Flags = MIX_DEFAULT_FORMAT;
 
 const std::string TITLE = "Gougerry";
-const int SCREEN_WIDTH = 1280;
-const int SCREEN_HEIGHT = 720;
+const int SCREEN_WIDTH = 1980;
+const int SCREEN_HEIGHT = 1080;
 const float HEIGHT_OFFSET_MULTIPLIER = .001;
 const int HEIGHT_OFFSET = SCREEN_HEIGHT * HEIGHT_OFFSET_MULTIPLIER;
 const int HEIGHT_LIMIT = SCREEN_HEIGHT / 2;
@@ -30,23 +30,37 @@ const float MILLIS_PER_FRAME = (1000.0 / FPS);
 
 const int BULLET_SPEED = 4;
 const int BULLET_LIMIT = 5;
-const int BULLET_DELAY = 125;
+const int BULLET_DELAY = 350;
 
-const int X_SPEED = 3;
-const int Y_SPEED = 3;
+const int PLAYER_X_SPEED = 3;
+const int PLAYER_Y_SPEED = 3;
 
-std::vector<SDL_Rect> bullets;
-
-Player *gougerry = nullptr;
-Sprite *background = nullptr;
-Sprite *bulletSprite = nullptr;
-Sprite *splash = nullptr;
+int enemyRows = 3;
+int enemyColumns = 20;
+int enemyPadding;
 
 SDL_Window *gWindow = nullptr;
 
 SDL_Renderer *gRenderer = nullptr;
 
 SDL_Event e;
+
+Sprite *splash = nullptr;
+Sprite *background = nullptr;
+Sprite *bulletSprite = nullptr;
+
+Player *gougerry = nullptr;
+
+Sprite *topHatStrawgerry = nullptr;
+Sprite *beretStrawgerry = nullptr;
+Sprite *nakedStrawgerry = nullptr;
+Sprite *hairyStrawgerry = nullptr;
+Sprite *currentEnemy = nullptr;
+
+
+std::vector<SDL_Rect> bullets;
+std::vector<std::vector<int>> enemies;
+
 
 Mix_Chunk *intro = nullptr;
 Mix_Music *gMusic = nullptr;
@@ -56,7 +70,6 @@ bool canUpdate = true;
 
 unsigned long lastIntroTime;
 unsigned long targetIntroWaitTime;
-
 unsigned long lastBulletTime;
 unsigned long tickStartTime;
 unsigned long tickEndTime;
@@ -79,7 +92,13 @@ enum IntroState{
 
 bool init();
 
+void clamp(int var, int min, int max);
+
 void createBullet();
+
+void resetEnemies();
+
+void resetEnemies(int* rows, int* columns);
 
 int update(void* ptr);
 
@@ -101,14 +120,20 @@ int main( int argc, char* argv[] )
 
 		splash = new Sprite("res/Intro.png", gRenderer, colorKeyPurple);
 
+		background = new Sprite("res/background.png", gRenderer);
+		background->setHeight(SCREEN_HEIGHT);
+		background->setWidth(SCREEN_WIDTH);
+
 		gougerry = new Player("res/Ghougerry.png", gRenderer, 0, SCREEN_HEIGHT - HEIGHT_OFFSET, colorKeyPurple);
 		gougerry->setX(SCREEN_WIDTH/2 - gougerry->getWidth() / 2);
 
 		bulletSprite = new Sprite("res/Bullet.png", gRenderer, colorKeyWhite);
-		
-		background = new Sprite("res/background.png", gRenderer);
-		background->setHeight(SCREEN_HEIGHT);
-		background->setWidth(SCREEN_WIDTH);
+
+		topHatStrawgerry = new Sprite("res/Top_Hat_Strawgerry.png", gRenderer, colorKeyPurple);
+		beretStrawgerry = new Sprite("res/Beret_Strawgerry.png", gRenderer, colorKeyPurple);
+		nakedStrawgerry = new Sprite("res/Naked_Strawgerry.png", gRenderer, colorKeyPurple);
+		hairyStrawgerry = new Sprite("res/Hairy_Strawgerry.png", gRenderer, colorKeyPurple);
+		currentEnemy = topHatStrawgerry;
 
 		gMusic = Mix_LoadMUS( "res/weird.wav" );
 		if( gMusic == nullptr)
@@ -127,6 +152,8 @@ int main( int argc, char* argv[] )
 
 		Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 5);
 		Mix_PlayChannel(-1, intro, 0);
+
+		resetEnemies();
 		while( !quit )
 		{
 
@@ -217,6 +244,13 @@ bool init()
 	return success;
 }
 
+void clamp(int* var, int min, int max){
+	if(*var < min)
+		*var = min;
+	else if (*var > max)
+		*var = max;
+}
+
 void createBullet(){
 	SDL_Rect bullet;
 	bullet.x = gougerry->getX() + (gougerry->getWidth() / 2) - (bulletSprite->getWidth() / 2);
@@ -224,6 +258,29 @@ void createBullet(){
 	bullet.w = bulletSprite->getWidth();
 	bullet.h = bulletSprite->getHeight();
 	bullets.push_back(bullet);
+}
+
+void resetEnemies(){
+
+	enemies.clear();
+	for(int i = 0; i < (SCREEN_HEIGHT / 2) / currentEnemy->getHeight(); i++){
+		enemies.push_back(std::vector<int> (SCREEN_WIDTH / currentEnemy->getWidth(), 1));
+	}
+	enemyRows = (SCREEN_HEIGHT / 2) / currentEnemy->getHeight();
+	enemyColumns = SCREEN_WIDTH / currentEnemy->getWidth();
+}
+
+void resetEnemies(int* rows, int* columns){
+
+	clamp(rows, 0, SCREEN_WIDTH / currentEnemy->getWidth());
+	clamp(columns, 0, (SCREEN_HEIGHT / 2) / currentEnemy->getHeight());
+
+	enemies.clear();
+	for(int i = 0; i < *rows; i++){
+		enemies.push_back(std::vector<int> (*columns, 1));
+	}
+	enemyRows = *rows;
+	enemyColumns = *columns;
 }
 
 int update(void* ptr){
@@ -240,6 +297,15 @@ int update(void* ptr){
 				if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
 					quit = true;
 					return 0;
+				}
+
+				if(currentKeyStates[SDL_SCANCODE_SPACE]){
+					gameState = LEVEL_ONE;
+					if(!Mix_PlayingMusic()){
+						Mix_HaltChannel(-1);
+						Mix_VolumeMusic(MIX_MAX_VOLUME / 5);
+						Mix_PlayMusic(gMusic, -1);
+					}
 				}
 
 				switch(introState){
@@ -308,7 +374,6 @@ int update(void* ptr){
 			{
 				tickStartTime = SDL_GetTicks();
 
-
 				currentKeyStates = SDL_GetKeyboardState(NULL);
 
 				if(currentKeyStates[SDL_SCANCODE_ESCAPE]){
@@ -325,10 +390,10 @@ int update(void* ptr){
 
 				if( currentKeyStates[ SDL_SCANCODE_UP ] || currentKeyStates[SDL_SCANCODE_W])
 				{
-					gougerry->setYSpeed(-Y_SPEED);
+					gougerry->setYSpeed(-PLAYER_Y_SPEED);
 				}
 				else if(currentKeyStates[SDL_SCANCODE_DOWN] || currentKeyStates[SDL_SCANCODE_S]){
-					gougerry->setYSpeed(Y_SPEED);
+					gougerry->setYSpeed(PLAYER_Y_SPEED);
 				}
 				else{
 					gougerry->setYSpeed(0);
@@ -338,10 +403,10 @@ int update(void* ptr){
 					gougerry->setXSpeed(0);	
 				}
 				else if( currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]){
-					gougerry->setXSpeed(-X_SPEED);
+					gougerry->setXSpeed(-PLAYER_X_SPEED);
 				}
 				else if( currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D]){
-					gougerry->setXSpeed(X_SPEED);
+					gougerry->setXSpeed(PLAYER_X_SPEED);
 				}
 				else{
 					gougerry->setXSpeed(0);
@@ -364,9 +429,11 @@ int update(void* ptr){
 					gougerry->setY(SCREEN_HEIGHT - gougerry->getHeight() - HEIGHT_OFFSET);
 				}
 
-				for(int i = 0; i < bullets.size(); i++){
+				for(int i = 0; i < (int)bullets.size(); i++){
 					bullets[i].y -= BULLET_SPEED;
 				}
+
+				
 
 				bullets.erase(std::remove_if( bullets.begin(), bullets.end(), [](const auto& thing) { 
 					return thing.y < 0; 
@@ -445,8 +512,21 @@ void render(){
 		{
 			SDL_RenderCopy( gRenderer, background->getTexture(), nullptr, background->getRect());
 
-			for(int i = 0; i < bullets.size(); i++){
+			for(int i = 0; i < (int)bullets.size(); i++){
 				SDL_RenderCopy(gRenderer, bulletSprite->getTexture(), nullptr, &bullets[i]);
+			}
+
+			for(int i = 0; i < enemyRows; i++){
+				for(int j = 0; j < enemyColumns; j++){
+					if(enemies[i][j] > 0){
+						SDL_Rect enemyLoc;
+						enemyLoc.x = j * currentEnemy->getWidth() + enemyPadding;
+						enemyLoc.y = i * currentEnemy->getHeight() + enemyPadding;
+						enemyLoc.w = currentEnemy->getWidth();
+						enemyLoc.h = currentEnemy->getHeight();
+						SDL_RenderCopy(gRenderer, currentEnemy->getTexture(), nullptr, &enemyLoc);
+					}
+				}
 			}
 
 			SDL_RenderCopy(	gRenderer, gougerry->getTexture(), nullptr, gougerry->getRect());
@@ -467,6 +547,10 @@ void close()
 	delete gougerry;
 	delete bulletSprite;
 	delete background;
+	delete topHatStrawgerry;
+	delete beretStrawgerry;
+	delete nakedStrawgerry;
+	delete hairyStrawgerry;
 
 	//Destroy window	
 	SDL_DestroyRenderer( gRenderer );
