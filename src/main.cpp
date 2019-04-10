@@ -17,14 +17,14 @@ const int imgFlags = IMG_INIT_JPG|IMG_INIT_PNG;
 const int Mix_Flags = MIX_DEFAULT_FORMAT;
 
 const std::string TITLE = "Gougerry";
-const int SCREEN_WIDTH = 1980;
-const int SCREEN_HEIGHT = 1080;
+const int SCREEN_WIDTH = 1280;
+const int SCREEN_HEIGHT = 720;
 const float HEIGHT_OFFSET_MULTIPLIER = .001;
 const int HEIGHT_OFFSET = SCREEN_HEIGHT * HEIGHT_OFFSET_MULTIPLIER;
 const int HEIGHT_LIMIT = SCREEN_HEIGHT / 2;
 
 const float TPS = 120.0;
-const float FPS = 60.0;
+const float FPS = 30.0;
 const float MILLIS_PER_TICK = (1000.0 / TPS);
 const float MILLIS_PER_FRAME = (1000.0 / FPS);
 
@@ -59,6 +59,8 @@ Sprite *currentEnemy = nullptr;
 
 
 std::vector<SDL_Rect> bullets;
+SDL_Rect enemyLoc;
+std::vector<SDL_Rect> enemyLocs;
 std::vector<std::vector<int>> enemies;
 
 
@@ -172,7 +174,7 @@ int main( int argc, char* argv[] )
 				}
 			}
 
-			
+
 			render();
 
 			frameEndTime = SDL_GetTicks();
@@ -200,7 +202,7 @@ bool init()
 	{
 		printf( "SDL could not initialize! SDL Error: %s\n", SDL_GetError() );
 		success = false;
-	}else 
+	}else
 	{
 		if( !SDL_SetHint( SDL_HINT_RENDER_SCALE_QUALITY, "1" ) )
 		{
@@ -225,7 +227,7 @@ bool init()
 			{
 				SDL_SetRenderDrawColor(gRenderer, 0, 0, 0, 255);
 
-				
+
 				if( !( IMG_Init( imgFlags ) & imgFlags ) )
 				{
 					printf( "SDL_image could not initialize! SDL_image Error: %s\n", IMG_GetError() );
@@ -261,13 +263,13 @@ void createBullet(){
 }
 
 void resetEnemies(){
-
-	enemies.clear();
-	for(int i = 0; i < (SCREEN_HEIGHT / 2) / currentEnemy->getHeight(); i++){
-		enemies.push_back(std::vector<int> (SCREEN_WIDTH / currentEnemy->getWidth(), 1));
-	}
 	enemyRows = (SCREEN_HEIGHT / 2) / currentEnemy->getHeight();
 	enemyColumns = SCREEN_WIDTH / currentEnemy->getWidth();
+	enemies.clear();
+	for(int i = 0; i < enemyRows; i++){
+		enemies.push_back(std::vector<int> (SCREEN_WIDTH / currentEnemy->getWidth(), 1));
+	}
+
 }
 
 void resetEnemies(int* rows, int* columns){
@@ -397,10 +399,10 @@ int update(void* ptr){
 				}
 				else{
 					gougerry->setYSpeed(0);
-				} 
+				}
 
 				if((currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]) && (currentKeyStates[ SDL_SCANCODE_RIGHT ] || currentKeyStates[SDL_SCANCODE_D])){
-					gougerry->setXSpeed(0);	
+					gougerry->setXSpeed(0);
 				}
 				else if( currentKeyStates[ SDL_SCANCODE_LEFT ] || currentKeyStates[SDL_SCANCODE_A]){
 					gougerry->setXSpeed(-PLAYER_X_SPEED);
@@ -414,7 +416,7 @@ int update(void* ptr){
 
 				gougerry->setX(gougerry->getX() + gougerry->getXSpeed());
 				gougerry->setY(gougerry->getY() + gougerry->getYSpeed());
-				
+
 				if(gougerry->getX() < 0){
 					gougerry->setX(0);
 				}else if(gougerry->getX() + gougerry->getWidth() > SCREEN_WIDTH){
@@ -433,10 +435,17 @@ int update(void* ptr){
 					bullets[i].y -= BULLET_SPEED;
 				}
 
-				
+				for(int i = 0; i < (int)bullets.size(); i++){
+					for(int j = 0; j < (int) enemyLocs.size(); j++){
+						if((bullets[i].x >= enemyLocs[j].x && bullets[i].x <= enemyLocs[j].x + enemyLocs[j].w) && (bullets[i].y >= enemyLocs[j].y && bullets[i].y <= enemyLocs[j].y + enemyLocs[j].h))
+							bullets.erase(bullets.begin() + i);
+							enemyLocs.erase(enemyLocs.begin() + j);
+							enemies[j/enemyColumns][j%enemyColumns] = 0;
+					}
+				}
 
-				bullets.erase(std::remove_if( bullets.begin(), bullets.end(), [](const auto& thing) { 
-					return thing.y < 0; 
+				bullets.erase(std::remove_if( bullets.begin(), bullets.end(), [](const auto& thing) {
+					return thing.y < 0;
 				}),
 
 				bullets.end()
@@ -516,15 +525,17 @@ void render(){
 				SDL_RenderCopy(gRenderer, bulletSprite->getTexture(), nullptr, &bullets[i]);
 			}
 
+			enemyLocs.clear();
 			for(int i = 0; i < enemyRows; i++){
 				for(int j = 0; j < enemyColumns; j++){
 					if(enemies[i][j] > 0){
-						SDL_Rect enemyLoc;
+
 						enemyLoc.x = j * currentEnemy->getWidth() + enemyPadding;
 						enemyLoc.y = i * currentEnemy->getHeight() + enemyPadding;
 						enemyLoc.w = currentEnemy->getWidth();
 						enemyLoc.h = currentEnemy->getHeight();
 						SDL_RenderCopy(gRenderer, currentEnemy->getTexture(), nullptr, &enemyLoc);
+						enemyLocs.push_back(enemyLoc);
 					}
 				}
 			}
@@ -552,7 +563,7 @@ void close()
 	delete nakedStrawgerry;
 	delete hairyStrawgerry;
 
-	//Destroy window	
+	//Destroy window
 	SDL_DestroyRenderer( gRenderer );
 	SDL_DestroyWindow( gWindow );
 	gWindow = nullptr;
