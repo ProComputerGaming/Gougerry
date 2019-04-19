@@ -11,6 +11,7 @@
 #include <vector>
 #include "Sprite.hpp"
 #include "Player.hpp"
+#include "Enemy.hpp"
 
 const int SDL_Flags = SDL_INIT_EVERYTHING;
 const int imgFlags = IMG_INIT_JPG|IMG_INIT_PNG;
@@ -55,13 +56,11 @@ Sprite *topHatStrawgerry = nullptr;
 Sprite *beretStrawgerry = nullptr;
 Sprite *nakedStrawgerry = nullptr;
 Sprite *hairyStrawgerry = nullptr;
-Sprite *currentEnemy = nullptr;
+Enemy *currentEnemy = nullptr;
 
 
 std::vector<SDL_Rect> bullets;
-SDL_Rect enemyLoc;
-std::vector<SDL_Rect> enemyLocs;
-std::vector<std::vector<int>> enemies;
+std::vector<Enemy*> enemies;
 
 
 Mix_Chunk *intro = nullptr;
@@ -135,7 +134,15 @@ int main( int argc, char* argv[] )
 		beretStrawgerry = new Sprite("res/Beret_Strawgerry.png", gRenderer, colorKeyPurple);
 		nakedStrawgerry = new Sprite("res/Naked_Strawgerry.png", gRenderer, colorKeyPurple);
 		hairyStrawgerry = new Sprite("res/Hairy_Strawgerry.png", gRenderer, colorKeyPurple);
-		currentEnemy = topHatStrawgerry;
+
+		for(int i = 0; i < SCREEN_WIDTH/64; i++){
+			for(int j = 0; j < (SCREEN_HEIGHT/64) / 2; j++){
+				currentEnemy = new Enemy("res/Top_Hat_Strawgerry.png", gRenderer, colorKeyPurple);
+				currentEnemy->setGridXLocation(i, SCREEN_WIDTH);
+				currentEnemy->setGridYLocation(j, SCREEN_HEIGHT);
+				enemies.push_back(currentEnemy);
+			}
+		}
 
 		gMusic = Mix_LoadMUS( "res/weird.wav" );
 		if( gMusic == nullptr)
@@ -155,7 +162,6 @@ int main( int argc, char* argv[] )
 		Mix_VolumeChunk(intro, MIX_MAX_VOLUME / 5);
 		Mix_PlayChannel(-1, intro, 0);
 
-		resetEnemies();
 		while( !quit )
 		{
 
@@ -260,29 +266,6 @@ void createBullet(){
 	bullet.w = bulletSprite->getWidth();
 	bullet.h = bulletSprite->getHeight();
 	bullets.push_back(bullet);
-}
-
-void resetEnemies(){
-	enemyRows = (SCREEN_HEIGHT / 2) / currentEnemy->getHeight();
-	enemyColumns = SCREEN_WIDTH / currentEnemy->getWidth();
-	enemies.clear();
-	for(int i = 0; i < enemyRows; i++){
-		enemies.push_back(std::vector<int> (SCREEN_WIDTH / currentEnemy->getWidth(), 1));
-	}
-
-}
-
-void resetEnemies(int* rows, int* columns){
-
-	clamp(rows, 0, SCREEN_WIDTH / currentEnemy->getWidth());
-	clamp(columns, 0, (SCREEN_HEIGHT / 2) / currentEnemy->getHeight());
-
-	enemies.clear();
-	for(int i = 0; i < *rows; i++){
-		enemies.push_back(std::vector<int> (*columns, 1));
-	}
-	enemyRows = *rows;
-	enemyColumns = *columns;
 }
 
 int update(void* ptr){
@@ -433,20 +416,19 @@ int update(void* ptr){
 
 				for(int i = 0; i < (int)bullets.size(); i++){
 					bullets[i].y -= BULLET_SPEED;
-				}
-
-				for(int i = 0; i < (int)bullets.size(); i++){
-					for(int j = 0; j < (int) enemyLocs.size(); j++){
-						if((bullets[i].x >= enemyLocs[j].x && bullets[i].x <= enemyLocs[j].x + enemyLocs[j].w) && (bullets[i].y >= enemyLocs[j].y && bullets[i].y <= enemyLocs[j].y + enemyLocs[j].h))
+					for(Enemy* e : enemies){
+						if(e->hasCollided(bullets[i])){
+							enemies.erase(std::remove(enemies.begin(), enemies.end(), e), enemies.end());
 							bullets.erase(bullets.begin() + i);
-							enemyLocs.erase(enemyLocs.begin() + j);
-							enemies[j/enemyColumns][j%enemyColumns] = 0;
+						}
 					}
 				}
 
 				bullets.erase(std::remove_if( bullets.begin(), bullets.end(), [](const auto& thing) {
 					return thing.y < 0;
 				}),
+
+
 
 				bullets.end()
 				);
@@ -525,20 +507,10 @@ void render(){
 				SDL_RenderCopy(gRenderer, bulletSprite->getTexture(), nullptr, &bullets[i]);
 			}
 
-			enemyLocs.clear();
-			for(int i = 0; i < enemyRows; i++){
-				for(int j = 0; j < enemyColumns; j++){
-					if(enemies[i][j] > 0){
-
-						enemyLoc.x = j * currentEnemy->getWidth() + enemyPadding;
-						enemyLoc.y = i * currentEnemy->getHeight() + enemyPadding;
-						enemyLoc.w = currentEnemy->getWidth();
-						enemyLoc.h = currentEnemy->getHeight();
-						SDL_RenderCopy(gRenderer, currentEnemy->getTexture(), nullptr, &enemyLoc);
-						enemyLocs.push_back(enemyLoc);
-					}
-				}
+			for(int i = 0; i < (int)enemies.size(); i++){
+				SDL_RenderCopy(gRenderer, enemies[i]->getTexture(), nullptr, enemies[i]->getRect());
 			}
+
 
 			SDL_RenderCopy(	gRenderer, gougerry->getTexture(), nullptr, gougerry->getRect());
 

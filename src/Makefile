@@ -1,5 +1,5 @@
 #OBJS specifies which files to compile as part of the project
-OBJS = main.cpp Sprite.cpp Player.cpp
+OBJS = main.cpp Sprite.cpp Player.cpp Enemy.cpp
 
 SDL_DIR_LIN = /usr/include/SDL2
 SDL_DIR = ../SDL_MINGW/x86_64-w64-mingw32
